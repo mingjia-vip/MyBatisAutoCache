@@ -1,7 +1,14 @@
 ### 介绍
 
-## [DAO层的数据缓存实现](http://blog.csdn.net/mingjia1987/article/details/79424272)
+### [DAO层的数据缓存实现](http://blog.csdn.net/mingjia1987/article/details/79424272)
 http://blog.csdn.net/mingjia1987/article/details/79424272
+
+
+MybatisCache主要意在降低缓存使用的复杂度，对Mybatis+pagehelper进行包装，实现mapper方法缓存的拦截逻辑：
+    
+    拦截query类方法，进行缓存（分页缓存逻辑依赖PageHelper）；
+    拦截update类方法，根据操作的表名清除缓存中相关联数据；
+    自动保证数据一致性；
 
 
 #### 常规配置
