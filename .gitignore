@@ -13,4 +13,5 @@ disconf/
 log/
 .idea/*
 *.ids
+*.bak
 
