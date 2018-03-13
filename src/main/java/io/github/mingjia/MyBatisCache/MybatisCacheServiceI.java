@@ -40,7 +40,7 @@ public interface MybatisCacheServiceI<M, K, V> {
      */
     void delCache(M method);
 
-    MybatisCacheServiceI<String, String, Object> GUAVA_CACHE = new MybatisCacheServiceI<String, String, Object>() {
+    public MybatisCacheServiceI<String, String, Object> GUAVA_CACHE = new MybatisCacheServiceI<String, String, Object>() {
 
         private Cache<String, Map<String, Object>> cache = CacheBuilder.newBuilder()
                 .initialCapacity(100)//设置cache的初始大小为100，要合理设置该值
@@ -59,8 +59,10 @@ public interface MybatisCacheServiceI<M, K, V> {
         @Override
         public void setCache(String method, String key, Object value) {
             Map<String, Object> kvs = cache.getIfPresent(method);
-            if (kvs == null)
+            if (kvs == null){
                 kvs = new HashMap<>();
+                cache.put(method,kvs);
+            }
             kvs.put(key, value);
         }
 

@@ -41,7 +41,7 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
                     List<String> tableList = tablesNamesFinder.getTableList(selectStatement);
                     Set<String> tables = tables(tableList);
                     //存储数据库表和mapper中的方法对应关系,数据库表中的数据发生过更改,可以知道要清除哪个方法产生的缓存
-                    methods(MyBatisCacheConfig.TABLE_METHOD, tables, ms.getId());
+                    methods(tables, ms.getId());
                 } else if (StringUtils.containsIgnoreCase(sql, "insert")) {
                     // System.out.println(sql.split("\\s+")[2]);
                 } else if (StringUtils.containsIgnoreCase(sql, "delete")) {
@@ -54,13 +54,13 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
             }
         }
         //mapper中含有@MyBatisCache(disCache = true)的方法,直接查数据库
-        getDisCacheMethod(MyBatisCacheConfig.DIS_CACHE_METHOD, allClassName);
+        getDisCacheMethod(allClassName);
 
 
         return sqlSessionFactory;
     }
 
-    private static List<String> getDisCacheMethod(List<String> disCacheMethod, Set<String> allClassName) throws Exception {
+    private void getDisCacheMethod(Set<String> allClassName) throws Exception {
         for (String className : allClassName) {
             Method[] methods = Class.forName(className).getDeclaredMethods();
             for (Method method : methods) {
@@ -70,18 +70,17 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
                     boolean value = (boolean) m.invoke(p, null);
                     if (value) {
                         String mt = className + "." + method.getName();
-                        if (!disCacheMethod.contains(mt)) {
-                            disCacheMethod.add(mt);
+                        if (!MyBatisCacheConfig.DIS_CACHE_METHOD.contains(mt)) {
+                            MyBatisCacheConfig.DIS_CACHE_METHOD.add(mt);
                         }
                     }
                 }
             }
         }
-        return disCacheMethod;
     }
 
 
-    private static Set<String> tables(List<String> t) {
+    private Set<String> tables(List<String> t) {
         Set<String> s = new HashSet<String>();
         for (String tn : t) {
             s.add(tn.replaceAll("`", "").toLowerCase());
@@ -89,17 +88,18 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
         return s;
     }
 
-    private static Map<String, Set<String>> methods(Map<String, Set<String>> tableMethod, Set<String> tables, String method) {
+    private void methods(Set<String> tables, String method) {
         for (String table : tables) {
-            if (tableMethod.get(table) == null) {
+            String methodCode = DigestUtils.md5Hex(method);
+            if (MyBatisCacheConfig.TABLE_METHOD.get(table) == null) {
                 Set<String> s = new HashSet<String>(1);
-                s.add(DigestUtils.md5Hex(method));
-                tableMethod.put(table, s);
+                s.add(methodCode);
+                MyBatisCacheConfig.TABLE_METHOD.put(table, s);
             } else {
-                tableMethod.get(table).add(DigestUtils.md5Hex(method));
+                MyBatisCacheConfig.TABLE_METHOD.get(table).add(methodCode);
             }
+            if(MyBatisCacheConfig.METHOD_DESC.get(methodCode)==null)
+                MyBatisCacheConfig.METHOD_DESC.put(methodCode,method);
         }
-
-        return tableMethod;
     }
 }

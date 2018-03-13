@@ -12,11 +12,6 @@ import java.util.*;
 public class MyBatisCacheConfig {
 
     /**
-     * mybatisCache prefix
-     */
-    public static final String MYBATIS_CACHE_PREFIX = "MyBatisCache:";
-
-    /**
      * 不需要缓存的方法，直接查询数据库
      */
     public static List<String> DIS_CACHE_METHOD = new ArrayList<>();
@@ -24,6 +19,10 @@ public class MyBatisCacheConfig {
      * 表和方法映射关系
      */
     public static Map<String, Set<String>> TABLE_METHOD = new HashMap<>();
+    /**
+     * 方法key与方法名的对一个关系
+     */
+    public static Map<String, String> METHOD_DESC = new HashMap<>();
 
 
 }

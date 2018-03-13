@@ -56,12 +56,12 @@ public class MyBatisCacheInterceptor implements Interceptor {
             if (StringUtils.equals("query", invocationMethodName)) {
                 //判断方法是否在非缓存集合，在则直接查询数据库
                 if (contains(mappedStatement.getId())) {
-                    log.info("读取数据库");
+                    log.trace("读取数据库");
                     if (PageHelper.getLocalPage() != null) {
-                        log.info("分页拦截");
+                        log.trace("分页拦截");
                         return pageIntercept(invocation);
                     } else {
-                        log.info("普通拦截");
+                        log.trace("普通拦截");
                         return invocation.proceed();
                     }
                 } else {
@@ -80,7 +80,7 @@ public class MyBatisCacheInterceptor implements Interceptor {
                     }
                     String sql = boundSql.getSql();
 
-                    String method = MyBatisCacheConfig.MYBATIS_CACHE_PREFIX + DigestUtils.md5Hex(mappedStatement.getId());
+                    String method = DigestUtils.md5Hex(mappedStatement.getId());
 
                     //方法参数的变化会自动体现到CacheKey上
                     StringBuffer sb = new StringBuffer(cacheKey.toString());
@@ -101,8 +101,8 @@ public class MyBatisCacheInterceptor implements Interceptor {
                             sb.append(":").append(PageHelper.getLocalPage().getPageSize());
                         }
                     }
-                    log.info(method);
-                    log.info(sb.toString());
+                    log.trace("method:"+mappedStatement.getId()+",code:"+method);
+                    //log.trace(sb.toString());
                     String key = DigestUtils.md5Hex(sb.toString());
                     Object obj = cacheService.getCache(method,key);
                     if (obj == null) {
@@ -114,10 +114,10 @@ public class MyBatisCacheInterceptor implements Interceptor {
                             obj = invocation.proceed();
                             cacheService.setCache(method, key, obj);
                         }
-                        log.info("读取数据库");
+                        log.trace("读取数据库");
                         return obj;
                     } else {
-                        log.info("读取缓存");
+                        log.trace("读取缓存");
                         if (isPage) {
                             Page page = parseMap((Map<String, Object>) obj);
                             if (PageHelper.getLocalPage() != null)
@@ -132,26 +132,22 @@ public class MyBatisCacheInterceptor implements Interceptor {
                 }
 
             } else if (StringUtils.equals("update", invocation.getMethod().getName())) {
-                String sql = "";
-                if (args.length == 4) {
-                    //4 个参数时
-                    sql = mappedStatement.getBoundSql(parameter).getSql();
-                } else {
-                    //6 个参数时
-                    sql = ((BoundSql) args[5]).getSql();
-                }
+                String sql = mappedStatement.getBoundSql(parameter).getSql();
                 if (StringUtils.containsIgnoreCase(sql, "insert")) {
-                    Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(sql.split("\\s+")[2]);
+                    String table = sql.split("\\s+")[2].toLowerCase();
+                    Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(table);
                     for (String mapName : m) {
                         cacheService.delCache(mapName);
                     }
                 } else if (StringUtils.containsIgnoreCase(sql, "delete")) {
-                    Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(sql.split("\\s+")[2]);
+                    String table = sql.split("\\s+")[2].toLowerCase();
+                    Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(table);
                     for (String mapName : m) {
                         cacheService.delCache(mapName);
                     }
                 } else if (StringUtils.containsIgnoreCase(sql, "update")) {
-                    Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(sql.split("\\s+")[1]);
+                    String table = sql.split("\\s+")[1].toLowerCase();
+                    Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(table);
                     for (String mapName : m) {
                         cacheService.delCache(mapName);
                     }

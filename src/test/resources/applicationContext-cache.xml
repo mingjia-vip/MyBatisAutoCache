@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<beans
+        xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:context="http://www.springframework.org/schema/context"
+        xmlns:tx="http://www.springframework.org/schema/tx"
+        xmlns:aop="http://www.springframework.org/schema/aop" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/context
+		http://www.springframework.org/schema/context/spring-context-3.0.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd">
+    <!-- 激活利用注解进行装配 -->
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+    <context:component-scan base-package="io.github.mingjia.MyBatisCache.test"/>
+    <tx:annotation-driven/>
+
+    <!-- in-memory database and  datasource -->
+    <jdbc:embedded-database id="dataSource">
+        <jdbc:script location="classpath:hsqldb/database-schema.sql"/>
+        <jdbc:script location="classpath:hsqldb/database-data.sql"/>
+    </jdbc:embedded-database>
+
+
+    <!-- ibatis3 工厂类 -->
+    <bean id="sqlSessionFactory" class="io.github.mingjia.MyBatisCache.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="typeAliasesPackage" value="io.github.mingjia.MyBatisCache.test.dao.po"/>
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+        <property name="mapperLocations" value="classpath:mapper/*.xml"/>
+        <property name="plugins">
+            <array>
+                <bean class="io.github.mingjia.MyBatisCache.MyBatisCacheInterceptor">
+                    <property name="properties">
+                        <value>
+                            helperDialect=mysql
+                            IDENTITY=MYSQL
+                            notEmpty=true
+                            reasonable=true
+                            supportMethodsArguments=true
+                        </value>
+                    </property>
+                    <property name="cacheService" ref="cacheService"/>
+                </bean>
+            </array>
+        </property>
+    </bean>
+    <bean id="cacheService" class="io.github.mingjia.MyBatisCache.test.service.DefaultCacheService" />
+
+    <!-- DAO接口所在包名，Spring会自动查找其下的类 ,自动扫描了所有的XxxxMapper.xml对应的mapper接口文件,只要Mapper接口类和Mapper映射文件对应起来就可以了-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="io.github.mingjia.MyBatisCache.test.dao" />
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"></property>
+    </bean>
+
+    <!-- (事务管理)transaction manager, use JtaTransactionManager for global tx -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+
+    <!--======= 事务配置 End =================== -->
+    <!-- 配置基于注解的声明式事务 -->
+    <tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true"/>
+</beans>
