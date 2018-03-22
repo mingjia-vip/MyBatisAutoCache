@@ -1,6 +1,6 @@
 ### 介绍
 
-### [DAO层的数据缓存实现](http://blog.csdn.net/mingjia1987/article/details/79424272)
+### [MyBatis自动缓存](http://blog.csdn.net/mingjia1987/article/details/79424272)
 http://blog.csdn.net/mingjia1987/article/details/79424272
 
 
