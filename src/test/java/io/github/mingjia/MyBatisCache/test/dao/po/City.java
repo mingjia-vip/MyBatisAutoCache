@@ -9,24 +9,24 @@ import java.io.Serializable;
  * @create 18/3/13
  */
 public class City implements Serializable {
-    private int id;
-    private int countryid;
+    private Integer id;
+    private Integer countryid;
     private String name;
     private String countryname;
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
-    public int getCountryid() {
+    public Integer getCountryid() {
         return countryid;
     }
 
-    public void setCountryid(int countryid) {
+    public void setCountryid(Integer countryid) {
         this.countryid = countryid;
     }
 
