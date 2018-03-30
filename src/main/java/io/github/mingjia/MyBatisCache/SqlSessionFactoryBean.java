@@ -11,7 +11,10 @@ import org.apache.ibatis.session.SqlSessionFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * extends from {@link org.mybatis.spring.SqlSessionFactoryBean}
@@ -21,6 +24,12 @@ import java.util.*;
  * @create 18/2/27
  */
 public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryBean {
+
+    private String pageHelperCountSuffix = "_COUNT";
+
+    public void setPageHelperCountSuffix(String pageHelperCountSuffix) {
+        this.pageHelperCountSuffix = pageHelperCountSuffix;
+    }
 
     @Override
     public SqlSessionFactory getObject() throws Exception {
@@ -91,15 +100,19 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
     private void methods(Set<String> tables, String method) {
         for (String table : tables) {
             String methodCode = DigestUtils.md5Hex(method);
+            String methodCountCode = DigestUtils.md5Hex(method + pageHelperCountSuffix);
             if (MyBatisCacheConfig.TABLE_METHOD.get(table) == null) {
-                Set<String> s = new HashSet<String>(1);
-                s.add(methodCode);
+                Set<String> s = new HashSet<String>(2);
                 MyBatisCacheConfig.TABLE_METHOD.put(table, s);
-            } else {
-                MyBatisCacheConfig.TABLE_METHOD.get(table).add(methodCode);
             }
-            if(MyBatisCacheConfig.METHOD_DESC.get(methodCode)==null)
-                MyBatisCacheConfig.METHOD_DESC.put(methodCode,method);
+            Set<String> s = MyBatisCacheConfig.TABLE_METHOD.get(table);
+            s.add(methodCode);
+            s.add(methodCountCode);
+
+            if (MyBatisCacheConfig.METHOD_DESC.get(methodCode) == null)
+                MyBatisCacheConfig.METHOD_DESC.put(methodCode, method);
+            if (MyBatisCacheConfig.METHOD_DESC.get(methodCountCode) == null)
+                MyBatisCacheConfig.METHOD_DESC.put(methodCountCode, method + pageHelperCountSuffix);
         }
     }
 }

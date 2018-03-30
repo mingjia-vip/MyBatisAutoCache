@@ -52,21 +52,28 @@ public class MyBatisCacheTest {
             }
         }
     }
+
     /**
-     * 单表验证
-     * select触发缓存；
-     * 增删改清除缓存；
+     * 测试1:相同方法、相同参数
      */
     @Test
-    public void singleTest() {
+    public void Test1() {
         City city = new City();
         city.setId(1);
         //首次读取数据库
         List<City> list = cityMapper.selectSelective(city);
+        ConcurrentMap<String, Map<String,Object>> map =  cacheService.getAllCache();
         //验证缓存
         Assert.assertEquals(1, cacheService.getAllCache().size());
+        Iterator<String> it = map.keySet().iterator();
+        int cacheKeyCount = 0;
+        while(it.hasNext()){
+            Map<String,Object> kvs = map.get(it.next());
+            cacheKeyCount += kvs.size();
+        }
+        Assert.assertEquals(1, cacheKeyCount);
         printCache();
-        //第二次读取缓存
+        //第二次，读取缓存
         cityMapper.selectSelective(city);
         Assert.assertEquals(1, cacheService.getAllCache().size());
         //新增清除缓存
@@ -77,70 +84,253 @@ public class MyBatisCacheTest {
         cityMapper.insertSelective(newCity);
         //验证缓存
         Assert.assertEquals(0, cacheService.getAllCache().size());
-        //再次缓存数据
+    }
+
+    /**
+     * 测试2:相同方法、不同参数
+     */
+    @Test
+    public void Test2() {
+        City city = new City();
+        city.setId(1);
+        //首次读取数据库
         cityMapper.selectSelective(city);
-        Assert.assertEquals(1, cacheService.getAllCache().size());
-        //增加相同方法的缓存
         city.setId(2);
         cityMapper.selectSelective(city);
         ConcurrentMap<String, Map<String,Object>> map =  cacheService.getAllCache();
-        Assert.assertEquals(1, map.size());
+        //验证缓存
+        Assert.assertEquals(1, cacheService.getAllCache().size());
         Iterator<String> it = map.keySet().iterator();
+        int cacheKeyCount = 0;
         while(it.hasNext()){
             Map<String,Object> kvs = map.get(it.next());
-            Assert.assertEquals(2, kvs.size());
-            break;
+            cacheKeyCount += kvs.size();
         }
-        //增加相同方法的分页缓存
-        PageHelper.startPage(1,10);
-        cityMapper.selectSelective(city);
-        map =  cacheService.getAllCache();
-        Assert.assertEquals(1, map.size());
-        it = map.keySet().iterator();
-        while(it.hasNext()){
-            Map<String,Object> kvs = map.get(it.next());
-            Assert.assertEquals(3, kvs.size());
-            break;
-        }
-        //增加不同方法的缓存,关联查询country
-        cityMapper.selectCitysByCountryId(1);
-        map =  cacheService.getAllCache();
-        Assert.assertEquals(2, map.size());
+        Assert.assertEquals(2, cacheKeyCount);
         printCache();
+        //第二次，读取缓存
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        city.setId(2);
+        cityMapper.selectSelective(city);
+
+        //新增清除缓存
+        City newCity = new City();
+        newCity.setId(7);
+        newCity.setCountryid(3);
+        newCity.setName("Pattaya");
+        cityMapper.insertSelective(newCity);
+        //验证缓存
+        Assert.assertEquals(0, cacheService.getAllCache().size());
+    }
+
+
+
+    /**
+     * 测试3:相同方法、不同参数、相同分页
+     */
+    @Test
+    public void Test3() {
+        City city = new City();
+        //首次读取数据库
+        PageHelper.startPage(1,5);
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,5);
+        city.setId(2);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,5);
+        city.setId(100);
+        cityMapper.selectSelective(city);
+        ConcurrentMap<String, Map<String,Object>> map =  cacheService.getAllCache();
+        //验证缓存
+        Assert.assertEquals(2, cacheService.getAllCache().size());//方法本身＋方法_COUNT
+        Iterator<String> it = map.keySet().iterator();
+        int cacheKeyCount = 0;
+        while(it.hasNext()){
+            Map<String,Object> kvs = map.get(it.next());
+            cacheKeyCount += kvs.size();
+        }
+        Assert.assertEquals(5, cacheKeyCount);//3count+2query,最后一次query为执行，应为count＝0
+        printCache();
+
+        //第二次，读取缓存
+        PageHelper.startPage(1,5);
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,5);
+        city.setId(2);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,5);
+        city.setId(100);
+        cityMapper.selectSelective(city);
+
+
+        //新增清除缓存
+        City newCity = new City();
+        newCity.setId(7);
+        newCity.setCountryid(3);
+        newCity.setName("Pattaya");
+        cityMapper.insertSelective(newCity);
+        printCache();
+        //验证缓存
+        Assert.assertEquals(0, cacheService.getAllCache().size());
 
     }
 
     /**
-     * 关联验证
-     * select触发缓存；
-     * 增删改清除缓存；
+     * 测试4:相同方法、不同参数、不同分页
      */
     @Test
-    public void mulityTest() {
-        singleTest();
-        cityMapper.selectCountryAndCitysByCountryId(1);
+    public void Test4() {
+        City city = new City();
+        //首次读取数据库
+        PageHelper.startPage(1,5);
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,10);
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,10);
+        city.setId(2);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,10);
+        city.setId(100);
+        cityMapper.selectSelective(city);
         ConcurrentMap<String, Map<String,Object>> map =  cacheService.getAllCache();
-        Assert.assertEquals(3, map.size());
+        //验证缓存
+        Assert.assertEquals(2, cacheService.getAllCache().size());//方法本身＋方法_COUNT
+        Iterator<String> it = map.keySet().iterator();
+        int cacheKeyCount = 0;
+        while(it.hasNext()){
+            Map<String,Object> kvs = map.get(it.next());
+            cacheKeyCount += kvs.size();
+        }
+        Assert.assertEquals(6, cacheKeyCount);//3count+3query,最后一次query为执行，应为count＝0
         printCache();
-        Country country = new Country();
-        country.setId(4);
-        country.setName("Japan");
-        countryMapper.insertSelective(country);
-        map =  cacheService.getAllCache();
-        Assert.assertEquals(2, map.size());
+
+        //第二次，读取缓存
+        PageHelper.startPage(1,5);
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,10);
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,10);
+        city.setId(100);
+        cityMapper.selectSelective(city);
+
+
+        //新增清除缓存
+        City newCity = new City();
+        newCity.setId(7);
+        newCity.setCountryid(3);
+        newCity.setName("Pattaya");
+        cityMapper.insertSelective(newCity);
         printCache();
+        //验证缓存
+        Assert.assertEquals(0, cacheService.getAllCache().size());
+
     }
 
 
 
+    /**
+     * 测试5:不同方法
+     */
+    @Test
+    public void Test5() {
+        City city = new City();
+        //首次读取数据库
+        PageHelper.startPage(1,5);
+        city.setCountryid(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,5);
+        cityMapper.selectCitysByCountryId(1);
+        ConcurrentMap<String, Map<String,Object>> map =  cacheService.getAllCache();
+        //验证缓存
+        Assert.assertEquals(4, cacheService.getAllCache().size());//2方法本身＋2方法_COUNT
+        Iterator<String> it = map.keySet().iterator();
+        int cacheKeyCount = 0;
+        while(it.hasNext()){
+            Map<String,Object> kvs = map.get(it.next());
+            cacheKeyCount += kvs.size();
+        }
+        Assert.assertEquals(4, cacheKeyCount);//2count+2query
+        printCache();
 
-    private void printResult(List list) {
-        if (list != null && list.size() > 0)
-            for (Object o : list)
-                System.err.println("result:" + o);
-        else
-            System.err.println("result is empty");
+        //第二次，读取缓存
+        PageHelper.startPage(1,5);
+        city.setId(1);
+        cityMapper.selectSelective(city);
+        PageHelper.startPage(1,5);
+        cityMapper.selectCitysByCountryId(1);
+
+        //新增清除缓存
+        City newCity = new City();
+        newCity.setId(7);
+        newCity.setCountryid(3);
+        newCity.setName("Pattaya");
+        cityMapper.insertSelective(newCity);
+        printCache();
+        //验证缓存
+        Assert.assertEquals(0, cacheService.getAllCache().size());
+
     }
+
+
+    /**
+     * 测试6:不同表，不同方法
+     */
+    @Test
+    public void Test6() {
+        //首次读取数据库
+        PageHelper.startPage(1,5);
+        cityMapper.selectCitysByCountryId(1);
+        PageHelper.startPage(1,5);
+        cityMapper.selectCountryAndCitysByCountryId(1);
+        PageHelper.startPage(1,5);
+        countryMapper.selectSelective(new Country());
+        ConcurrentMap<String, Map<String,Object>> map =  cacheService.getAllCache();
+        //验证缓存
+        Assert.assertEquals(6, cacheService.getAllCache().size());//3方法本身＋3方法_COUNT
+        Iterator<String> it = map.keySet().iterator();
+        int cacheKeyCount = 0;
+        while(it.hasNext()){
+            Map<String,Object> kvs = map.get(it.next());
+            cacheKeyCount += kvs.size();
+        }
+        Assert.assertEquals(6, cacheKeyCount);//2count+2query
+        printCache();
+
+        //第二次，读取缓存
+        PageHelper.startPage(1,5);
+        cityMapper.selectCitysByCountryId(1);
+        PageHelper.startPage(1,5);
+        cityMapper.selectCountryAndCitysByCountryId(1);
+        PageHelper.startPage(1,5);
+        countryMapper.selectSelective(new Country());
+
+        //新增清除缓存
+        City newCity = new City();
+        newCity.setId(7);
+        newCity.setCountryid(3);
+        newCity.setName("Pattaya");
+        cityMapper.insertSelective(newCity);
+        printCache();
+        //验证缓存
+        Assert.assertEquals(2, cacheService.getAllCache().size());
+        it = map.keySet().iterator();
+        cacheKeyCount = 0;
+        while(it.hasNext()){
+            Map<String,Object> kvs = map.get(it.next());
+            cacheKeyCount += kvs.size();
+        }
+        Assert.assertEquals(2, cacheKeyCount);//2count+2query
+        printCache();
+
+    }
+
 
     private void printCache(){
         ConcurrentMap<String, Map<String,Object>> map =  cacheService.getAllCache();

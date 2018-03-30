@@ -23,6 +23,7 @@
 
     <!-- ibatis3 工厂类 -->
     <bean id="sqlSessionFactory" class="io.github.mingjia.MyBatisCache.SqlSessionFactoryBean">
+        <property name="pageHelperCountSuffix" value="_COUNT"/><!-- 默认_COUNT -->
         <property name="dataSource" ref="dataSource"/>
         <property name="typeAliasesPackage" value="io.github.mingjia.MyBatisCache.test.dao.po"/>
         <property name="configLocation" value="classpath:mybatis-config.xml"/>
@@ -30,6 +31,9 @@
         <property name="plugins">
             <array>
                 <bean class="io.github.mingjia.MyBatisCache.MyBatisCacheInterceptor">
+                    <property name="cacheService" ref="cacheService"/>
+                </bean>
+                <bean class="com.github.pagehelper.PageInterceptor">
                     <property name="properties">
                         <value>
                             helperDialect=mysql
@@ -39,7 +43,6 @@
                             supportMethodsArguments=true
                         </value>
                     </property>
-                    <property name="cacheService" ref="cacheService"/>
                 </bean>
             </array>
         </property>
