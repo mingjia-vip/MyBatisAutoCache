@@ -29,6 +29,7 @@
         <property name="mapperLocations" value="classpath:mapper/*.xml"/>
         <property name="plugins">
             <array>
+                <!-- pageHelper v5
                 <bean class="com.github.pagehelper.PageInterceptor">
                     <property name="properties">
                         <value>
@@ -37,6 +38,14 @@
                             notEmpty=true
                             reasonable=true
                             supportMethodsArguments=true
+                        </value>
+                    </property>
+                </bean>-->
+                <!-- pageHelper v4 -->
+                <bean class="com.github.pagehelper.PageHelper">
+                    <property name="properties">
+                        <value>
+                            dialect=mysql
                         </value>
                     </property>
                 </bean>

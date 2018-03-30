@@ -42,6 +42,7 @@
                         </value>
                     </property>
                 </bean>-->
+                <!-- pageHelper v4 -->
                 <bean class="com.github.pagehelper.PageHelper">
                     <property name="properties">
                         <value>

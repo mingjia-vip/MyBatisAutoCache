@@ -4,15 +4,15 @@
 http://blog.csdn.net/mingjia1987/article/details/79424272
 
 
-MybatisCache主要意在降低缓存使用的复杂度，对Mybatis+pagehelper进行包装，实现mapper方法缓存的拦截逻辑：
+MybatisCache主要意在降低缓存使用的复杂度，通过插件的方式引入即可自动实现数据缓存（及更新）：
     
-    拦截query类方法，进行缓存（分页缓存逻辑依赖PageHelper）；
+    拦截query类方法，进行缓存；
     拦截update类方法，根据操作的表名清除缓存中相关联数据；
     自动保证数据一致性；
 
 
-#### 常规配置
-与Spring＋MyBatis的配置类似，更换SqlSessionFactoryBean和MyBatisCacheInterceptor，如：
+#### 配置
+基于Spring＋MyBatis的配置，更换SqlSessionFactoryBean，并引入MyBatisCacheInterceptor插件，如：
 ```
     <bean id="sqlSessionFactory" class="com.xbniao.uc.dao.mybatisCache.SqlSessionFactoryBean">
         <property name="dataSource" ref="dataSource"/>
