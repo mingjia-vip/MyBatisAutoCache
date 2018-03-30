@@ -14,18 +14,19 @@ MybatisCache主要意在降低缓存使用的复杂度，通过插件的方式�
 #### 配置
 基于Spring＋MyBatis的配置，更换SqlSessionFactoryBean，并引入MyBatisCacheInterceptor插件，如：
 ```
-    <bean id="sqlSessionFactory" class="com.xbniao.uc.dao.mybatisCache.SqlSessionFactoryBean">
+    <bean id="sqlSessionFactory" class="io.github.mingjia.MyBatisCache.SqlSessionFactoryBean">
+        <property name="pageHelperCountSuffix" value="_COUNT"/><!-- 默认_COUNT -->
         <property name="dataSource" ref="dataSource"/>
+        <property name="typeAliasesPackage" value="io.github.mingjia.MyBatisCache.test.dao.po"/>
         <property name="configLocation" value="classpath:mybatis-config.xml"/>
-        <property name="mapperLocations">
-            <array>
-                <value>classpath*:mapper/*.xml</value>
-            </array>
-        </property>
-        <property name="typeAliasesPackage" value="com.xbniao.uc.dao.po"/>
+        <property name="mapperLocations" value="classpath:mapper/*.xml"/>
         <property name="plugins">
             <array>
-                <bean class="com.xbniao.uc.dao.mybatisCache.MyBatisCacheInterceptor" >
+                <bean class="io.github.mingjia.MyBatisCache.MyBatisCacheInterceptor">
+                    <property name="cacheService" ref="cacheService"/>
+                </bean>
+                <!-- pageHelper v5
+                <bean class="com.github.pagehelper.PageInterceptor">
                     <property name="properties">
                         <value>
                             helperDialect=mysql
@@ -35,11 +36,19 @@ MybatisCache主要意在降低缓存使用的复杂度，通过插件的方式�
                             supportMethodsArguments=true
                         </value>
                     </property>
-                    <!--<property name="cacheService" ref="mybatisCacheService"/> 指定缓存实现类（需要实现MybatisCacheServiceI，默认MybatisCacheServiceI.GUAVA_CACHE）-->
+                </bean>-->
+                <!-- pageHelper v4 -->
+                <bean class="com.github.pagehelper.PageHelper">
+                    <property name="properties">
+                        <value>
+                            dialect=mysql
+                        </value>
+                    </property>
                 </bean>
             </array>
         </property>
     </bean>
+    <bean id="cacheService" class="io.github.mingjia.MyBatisCache.test.service.DefaultCacheService" />
 ```
 
 
