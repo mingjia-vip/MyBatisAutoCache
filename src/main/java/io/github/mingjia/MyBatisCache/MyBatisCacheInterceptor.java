@@ -17,7 +17,6 @@ import java.util.Set;
 
 /**
  * 缓存拦截器
- * 依赖PageHelper v5 TODO：PageHelper v5和v4的实现有别，需要分别处理
  *
  * @auther GuiBin
  * @create 18/2/27

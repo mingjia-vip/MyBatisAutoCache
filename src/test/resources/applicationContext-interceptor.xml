@@ -30,6 +30,7 @@
         <property name="plugins">
             <array>
                 <bean class="io.github.mingjia.MyBatisCache.test.interceptor.Interceptor1"/>
+                <!-- pageHelper v5
                 <bean class="com.github.pagehelper.PageInterceptor">
                     <property name="properties">
                         <value>
@@ -38,6 +39,13 @@
                             notEmpty=true
                             reasonable=true
                             supportMethodsArguments=true
+                        </value>
+                    </property>
+                </bean>-->
+                <bean class="com.github.pagehelper.PageHelper">
+                    <property name="properties">
+                        <value>
+                            dialect=mysql
                         </value>
                     </property>
                 </bean>

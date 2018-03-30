@@ -33,6 +33,7 @@
                 <bean class="io.github.mingjia.MyBatisCache.MyBatisCacheInterceptor">
                     <property name="cacheService" ref="cacheService"/>
                 </bean>
+                <!-- pageHelper v5
                 <bean class="com.github.pagehelper.PageInterceptor">
                     <property name="properties">
                         <value>
@@ -41,6 +42,13 @@
                             notEmpty=true
                             reasonable=true
                             supportMethodsArguments=true
+                        </value>
+                    </property>
+                </bean>-->
+                <bean class="com.github.pagehelper.PageHelper">
+                    <property name="properties">
+                        <value>
+                            dialect=mysql
                         </value>
                     </property>
                 </bean>
