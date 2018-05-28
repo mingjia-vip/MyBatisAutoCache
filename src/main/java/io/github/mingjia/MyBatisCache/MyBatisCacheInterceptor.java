@@ -45,7 +45,7 @@ public class MyBatisCacheInterceptor implements Interceptor {
             if (StringUtils.equals("query", invocationMethodName)) {
                 //判断方法是否在非缓存集合，在则直接查询数据库
                 if (contains(mappedStatement.getId())) {
-                    log.trace("读取数据库");
+                    log.debug("读取数据库");
                     return invocation.proceed();
                 } else {
                     boolean isPage = false;
@@ -63,17 +63,17 @@ public class MyBatisCacheInterceptor implements Interceptor {
                     }
                     //String sql = boundSql.getSql();
                     String method = DigestUtils.md5Hex(mappedStatement.getId());
-                    log.trace("key:" + cacheKey.toString());
-                    log.trace("method:" + mappedStatement.getId());
+                    log.debug("key:" + cacheKey.toString());
+                    log.debug("method:" + mappedStatement.getId());
                     String key = DigestUtils.md5Hex(cacheKey.toString());
                     Object obj = cacheService.getCache(method, key);
                     if (obj == null) {
-                        log.trace("读取数据库");
+                        log.debug("读取数据库");
                         obj = invocation.proceed();
                         cacheService.setCache(method, key, obj);
                         return obj;
                     } else {
-                        log.trace("读取缓存");
+                        log.debug("读取缓存");
                         return obj;
                     }
                 }

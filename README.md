@@ -50,5 +50,5 @@ MybatisCache主要意在降低缓存使用的复杂度，通过插件的方式�
     </bean>
     <bean id="cacheService" class="io.github.mingjia.MyBatisCache.test.service.DefaultCacheService" />
 ```
-
+提供了默认的Google Guava Cache的cacheService实现，实际使用中建议使用外部cache实现，实现接口（MybatisCacheServiceI）即可。
 

@@ -44,8 +44,8 @@ public interface MybatisCacheServiceI<M, K, V> {
 
         private Cache<String, Map<String, Object>> cache = CacheBuilder.newBuilder()
                 .initialCapacity(100)//设置cache的初始大小为100，要合理设置该值
-                .concurrencyLevel(10)//设置并发数为10，即同一时间最多只能有10个线程往cache执行写入操作
-                .expireAfterWrite(1, TimeUnit.HOURS)//设置cache中的数据在写入之后的存活时间为1小时
+                .concurrencyLevel(100)//设置并发数为10，即同一时间最多只能有10个线程往cache执行写入操作
+                .expireAfterWrite(24, TimeUnit.HOURS)//设置cache中的数据在写入之后的存活时间为1小时
                 .build();
 
         @Override
