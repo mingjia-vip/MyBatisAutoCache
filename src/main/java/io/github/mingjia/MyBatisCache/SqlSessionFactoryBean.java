@@ -7,14 +7,14 @@ import net.sf.jsqlparser.util.TablesNamesFinder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.mapping.ParameterMap;
+import org.apache.ibatis.mapping.ParameterMapping;
+import org.apache.ibatis.mapping.SqlCommandType;
 import org.apache.ibatis.session.SqlSessionFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * extends from {@link org.mybatis.spring.SqlSessionFactoryBean}
@@ -41,9 +41,16 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
         for (Object m : l) {
             if (m instanceof MappedStatement) {
                 MappedStatement ms = (MappedStatement) m;
-                //System.out.println("=============="+ms.getId());
-                String sql = ms.getBoundSql(null).getSql();
-                if (StringUtils.containsIgnoreCase(sql, "select")) {
+
+                if (SqlCommandType.SELECT.equals(ms.getSqlCommandType())) {
+                    //todo：模拟参数
+                    /*List<ParameterMapping>  parameterMappingList = ms.getParameterMap().getParameterMappings();
+                    Iterator<ParameterMapping> pmIt = parameterMappingList.iterator();
+                    while(pmIt.hasNext()){
+                        ParameterMapping parameterMapping = pmIt.next();
+                        System.out.print(parameterMapping.getJavaType());
+                    }*/
+                    String sql = ms.getBoundSql(null).getSql();
                     Statement statement = CCJSqlParserUtil.parse(sql);
                     Select selectStatement = (Select) statement;
                     TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
@@ -51,12 +58,6 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
                     Set<String> tables = tables(tableList);
                     //存储数据库表和mapper中的方法对应关系,数据库表中的数据发生过更改,可以知道要清除哪个方法产生的缓存
                     methods(tables, ms.getId());
-                } else if (StringUtils.containsIgnoreCase(sql, "insert")) {
-                    // System.out.println(sql.split("\\s+")[2]);
-                } else if (StringUtils.containsIgnoreCase(sql, "delete")) {
-                    // System.out.println(sql.split("\\s+")[2]);
-                } else if (StringUtils.containsIgnoreCase(sql, "update")) {
-                    // System.out.println(sql.split("\\s+")[1]);
                 }
                 //记录所有的Mapper类
                 allClassName.add(StringUtils.substring(ms.getId(), 0, StringUtils.lastIndexOf(ms.getId(), '.')));
