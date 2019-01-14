@@ -1,6 +1,16 @@
 package io.github.mingjia.MyBatisCache;
 
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.insert.Insert;
+import net.sf.jsqlparser.statement.select.Select;
+import net.sf.jsqlparser.statement.update.Update;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.cache.CacheKey;
@@ -11,9 +21,10 @@ import org.apache.ibatis.plugin.*;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.log4j.Logger;
+import org.springframework.util.CollectionUtils;
 
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 缓存拦截器
@@ -37,6 +48,9 @@ public class MyBatisCacheInterceptor implements Interceptor {
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
         try {
+            if(cacheService==null)
+                initDefaultCacheService();
+
             Object[] args = invocation.getArgs();
             MappedStatement mappedStatement = (MappedStatement) args[0];
             Object parameter = args[1];
@@ -44,7 +58,7 @@ public class MyBatisCacheInterceptor implements Interceptor {
             String invocationMethodName = invocation.getMethod().getName();
             if (StringUtils.equals("query", invocationMethodName)) {
                 //判断方法是否在非缓存集合，在则直接查询数据库
-                if (contains(mappedStatement.getId())) {
+                if (isNoCacheContains(mappedStatement.getId())) {
                     log.debug("读取数据库");
                     return invocation.proceed();
                 } else {
@@ -54,6 +68,7 @@ public class MyBatisCacheInterceptor implements Interceptor {
                     BoundSql boundSql;
                     if (args.length == 4) {
                         //4 个参数时
+                        log.error("getBoundSql parameter:"+parameter);
                         boundSql = mappedStatement.getBoundSql(parameter);
                         cacheKey = executor.createCacheKey(mappedStatement, parameter, (RowBounds) args[2], boundSql);
                     } else {
@@ -80,20 +95,35 @@ public class MyBatisCacheInterceptor implements Interceptor {
 
             } else if (StringUtils.equals("update", invocation.getMethod().getName())) {
                 String sql = mappedStatement.getBoundSql(parameter).getSql();
-                if (StringUtils.containsIgnoreCase(sql, "insert")) {
-                    String table = sql.split("\\s+")[2].toLowerCase();
+                log.debug("sql:"+sql);
+                Statement statement = CCJSqlParserUtil.parse(sql);
+                if(statement instanceof Delete){
+                    String table = ((Delete) statement).getTable().getName();
+                    log.debug("table:"+table);
                     Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(table);
                     for (String method : m) {
                         cacheService.delCache(method);
                     }
-                } else if (StringUtils.containsIgnoreCase(sql, "delete")) {
-                    String table = sql.split("\\s+")[2].toLowerCase();
-                    Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(table);
-                    for (String method : m) {
-                        cacheService.delCache(method);
+                }else if(statement instanceof Update){
+                    Update update = (Update) statement;
+                    Set<String> dealTableName = new HashSet<>();
+                    for(Column column:update.getColumns()){
+                        if(column.getTable()!=null)
+                            dealTableName.add(column.getTable().getName());
                     }
-                } else if (StringUtils.containsIgnoreCase(sql, "update")) {
-                    String table = sql.split("\\s+")[1].toLowerCase();
+                    for (Table t : update.getTables()) {
+                        log.debug("table:"+t.getName());
+                        if(!CollectionUtils.isEmpty(dealTableName) && !dealTableName.contains(t.getName()) && !dealTableName.contains(t.getAlias()))
+                            break;
+                        Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(t.getName());
+                        for (String method : m) {
+                            cacheService.delCache(method);
+                        }
+                    }
+
+                }else if(statement instanceof Insert){
+                    String table = ((Insert) statement).getTable().getName();
+                    log.debug("table:"+table);
                     Set<String> m = MyBatisCacheConfig.TABLE_METHOD.get(table);
                     for (String method : m) {
                         cacheService.delCache(method);
@@ -114,7 +144,7 @@ public class MyBatisCacheInterceptor implements Interceptor {
         return Plugin.wrap(target, this);
     }
 
-    private boolean contains(String currentMethod) {
+    private boolean isNoCacheContains(String currentMethod) {
         boolean contains = false;
         for (String method : MyBatisCacheConfig.DIS_CACHE_METHOD) {
             if (StringUtils.equals(method, currentMethod)) {
@@ -127,7 +157,42 @@ public class MyBatisCacheInterceptor implements Interceptor {
 
 
     private Properties properties;
-    private MybatisCacheServiceI cacheService = MybatisCacheServiceI.GUAVA_CACHE;
+    private MybatisCacheServiceI cacheService = null;
+
+    private void initDefaultCacheService(){
+        cacheService = new MybatisCacheServiceI<String, String, Object>() {
+
+            private Cache<String, Map<String, Object>> cache = CacheBuilder.newBuilder()
+                    .initialCapacity(100)//设置cache的初始大小为100，要合理设置该值
+                    .concurrencyLevel(100)//设置并发数为10，即同一时间最多只能有10个线程往cache执行写入操作
+                    .expireAfterWrite(24, TimeUnit.HOURS)//设置cache中的数据在写入之后的存活时间为1小时
+                    .build();
+
+            @Override
+            public Object getCache(String method, String key) {
+                Map<String, Object> kvs = cache.getIfPresent(method);
+                if (kvs != null)
+                    return kvs.get(key);
+                return null;
+            }
+
+            @Override
+            public void setCache(String method, String key, Object value) {
+                Map<String, Object> kvs = cache.getIfPresent(method);
+                if (kvs == null){
+                    kvs = new HashMap<>();
+                    cache.put(method,kvs);
+                }
+                kvs.put(key, value);
+            }
+
+            @Override
+            public void delCache(String method) {
+                cache.invalidate(method);
+            }
+
+        };
+    }
 
     /**
      * 设置缓存实现

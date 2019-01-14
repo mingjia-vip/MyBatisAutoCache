@@ -23,6 +23,32 @@ public class MyBatisCacheConfig {
      * 方法key与方法名的对一个关系
      */
     public static Map<String, String> METHOD_DESC = new HashMap<>();
+    
+    public static Map<String,Class> CLASS_TYPE = new HashMap<>();
+    static{
+        CLASS_TYPE.put("byte", Byte.class);
+        CLASS_TYPE.put("long", Long.class);
+        CLASS_TYPE.put("short", Short.class);
+        CLASS_TYPE.put("int", Integer.class);
+        CLASS_TYPE.put("double", Double.class);
+        CLASS_TYPE.put("float", Float.class);
+        CLASS_TYPE.put("boolean", Boolean.class);
+        CLASS_TYPE.put("java.util.List", ArrayList.class);
+        CLASS_TYPE.put("java.util.Set", HashSet.class);
+
+        CLASS_TYPE.put("byte[]", Byte[].class);
+        CLASS_TYPE.put("long[]", Long[].class);
+        CLASS_TYPE.put("short[]", Short[].class);
+        CLASS_TYPE.put("int[]", Integer[].class);
+        CLASS_TYPE.put("integer[]", Integer[].class);
+        CLASS_TYPE.put("double[]", Double[].class);
+        CLASS_TYPE.put("float[]", Float[].class);
+        CLASS_TYPE.put("boolean[]", Boolean[].class);
+
+        CLASS_TYPE.put("java.util.List[]", ArrayList[].class);
+        CLASS_TYPE.put("java.util.Set[]", HashSet[].class);
+
+    }
 
 
 }

@@ -1,6 +1,8 @@
 package io.github.mingjia.MyBatisCache.test.dao;
 
 import io.github.mingjia.MyBatisCache.test.dao.po.Country;
+import org.apache.ibatis.annotations.Param;
+
 import java.util.List;
 
 /**
@@ -11,8 +13,9 @@ import java.util.List;
  */
 public interface CountryMapper {
     List<Country> selectSelective(Country country);
+    List<Country> selectByCountryName(String countryName);
     int insertSelective(Country country);
     int updateSelective(Country country);
-    int deleteById(int id);
+    int deleteById(@Param("id") int id);
 
 }

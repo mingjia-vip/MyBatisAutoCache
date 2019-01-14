@@ -14,6 +14,8 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface MyBatisCache {
-    public boolean disCache() default true;
+public @interface SelectCache {
+    public boolean disCache() default false;
+
+    public String[] tables() default {};
 }

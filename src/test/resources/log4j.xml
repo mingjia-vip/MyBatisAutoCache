@@ -12,16 +12,13 @@
         <level value="error"/>
     </logger>
     <logger name="com">
-        <level value="error"/>
+        <level value="debug"/>
     </logger>
     <logger name="info">
         <level value="error"/>
     </logger>
-    <logger name="org.mybatis">
-        <level value="info"/>
-    </logger>
     <root>
-        <level value="trace"/>
+        <level value="debug"/>
         <appender-ref ref="stdout"/>
     </root>
 </log4j:configuration>

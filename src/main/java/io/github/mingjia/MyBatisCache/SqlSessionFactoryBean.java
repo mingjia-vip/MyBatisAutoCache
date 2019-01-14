@@ -6,14 +6,18 @@ import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.util.TablesNamesFinder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.mapping.MappedStatement;
-import org.apache.ibatis.mapping.ParameterMap;
-import org.apache.ibatis.mapping.ParameterMapping;
 import org.apache.ibatis.mapping.SqlCommandType;
+import org.apache.ibatis.reflection.ParamNameResolver;
+import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 /**
@@ -24,6 +28,7 @@ import java.util.*;
  * @create 18/2/27
  */
 public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryBean {
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private String pageHelperCountSuffix = "_COUNT";
 
@@ -35,47 +40,102 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
     public SqlSessionFactory getObject() throws Exception {
 
         SqlSessionFactory sqlSessionFactory = super.getObject();
-        Collection l = sqlSessionFactory.getConfiguration().getMappedStatements();
+        Configuration conf = sqlSessionFactory.getConfiguration();
+        Collection l = conf.getMappedStatements();
 
-        Set<String> allClassName = new HashSet<String>();
         for (Object m : l) {
             if (m instanceof MappedStatement) {
                 MappedStatement ms = (MappedStatement) m;
 
                 if (SqlCommandType.SELECT.equals(ms.getSqlCommandType())) {
-                    //todo：模拟参数
-                    /*List<ParameterMapping>  parameterMappingList = ms.getParameterMap().getParameterMappings();
-                    Iterator<ParameterMapping> pmIt = parameterMappingList.iterator();
-                    while(pmIt.hasNext()){
-                        ParameterMapping parameterMapping = pmIt.next();
-                        System.out.print(parameterMapping.getJavaType());
-                    }*/
-                    String sql = ms.getBoundSql(null).getSql();
-                    Statement statement = CCJSqlParserUtil.parse(sql);
-                    Select selectStatement = (Select) statement;
-                    TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
-                    List<String> tableList = tablesNamesFinder.getTableList(selectStatement);
-                    Set<String> tables = tables(tableList);
+                    logger.debug("sql id:" + ms.getId());
+                    Set<String> tables = new HashSet<>();
+
+                    String mapperClassName = StringUtils.substring(ms.getId(), 0, StringUtils.lastIndexOf(ms.getId(), '.'));
+                    String methodName = StringUtils.substring(ms.getId(), StringUtils.lastIndexOf(ms.getId(), '.') + 1);
+
+                    Map<String, Object> selectAnnoation = getSelectCacheAnnoation(mapperClassName, methodName);
+                    String[] tableNames = null;
+                    if (selectAnnoation != null) {
+                        if ((Boolean) selectAnnoation.get("disCache")) {
+                            logger.debug("[disCache!]");
+                            continue;
+                        }
+                        tableNames = (String[]) selectAnnoation.get("tables");
+                    }
+
+                    if (tableNames != null && tableNames.length > 0) {
+                        for (String tableName : tableNames)
+                            tables.add(tableName);
+                    } else {
+                        String sql = ms.getBoundSql(null).getSql();
+                        //logger.debug("sql:"+sql);
+                        Statement statement = CCJSqlParserUtil.parse(sql);
+                        Select selectStatement = (Select) statement;
+                        TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
+                        List<String> tableList = tablesNamesFinder.getTableList(selectStatement);
+                        tables.addAll(tables(tableList));
+                    }
+                    logger.debug("tables:" + tables);
+
                     //存储数据库表和mapper中的方法对应关系,数据库表中的数据发生过更改,可以知道要清除哪个方法产生的缓存
                     methods(tables, ms.getId());
                 }
-                //记录所有的Mapper类
-                allClassName.add(StringUtils.substring(ms.getId(), 0, StringUtils.lastIndexOf(ms.getId(), '.')));
+
             }
         }
-        //mapper中含有@MyBatisCache(disCache = true)的方法,直接查数据库
-        getDisCacheMethod(allClassName);
-
 
         return sqlSessionFactory;
     }
 
-    private void getDisCacheMethod(Set<String> allClassName) throws Exception {
+
+    private String[] getParameterNames(String className, String methodName, Configuration configuration) throws Exception {
+        Method[] methods = Class.forName(className).getDeclaredMethods();
+        for (Method method : methods) {
+            if (!method.getName().equals(methodName))
+                continue;
+            ParamNameResolver resolver = new ParamNameResolver(configuration, method);
+            String[] names = resolver.getNames();
+            return names;
+        }
+        return null;
+    }
+
+
+    private Map<String, Class> getParameterMap(String className, String methodName) throws Exception {
+        Method[] methods = Class.forName(className).getDeclaredMethods();
+        for (Method method : methods) {
+            if (!method.getName().equals(methodName))
+                continue;
+            Map<String, Class> map = new HashMap<>();
+            Parameter[] parameters = method.getParameters();
+            for (Parameter parameter : parameters) {
+                if (parameter.isAnnotationPresent(Param.class)) {
+                    Annotation p = parameter.getAnnotation(Param.class);
+                    Method m = p.getClass().getDeclaredMethod("value", null);
+                    String value = (String) m.invoke(p, null);
+                    if (StringUtils.isNotEmpty(value)) {
+                        map.put(value, dealParamClass(parameter.getType()));
+                    }
+                } else {
+                    map.put(parameter.getName().replace("arg", "param"), dealParamClass(parameter.getType()));
+                }
+            }
+            return map;
+        }
+        return null;
+    }
+
+    private Class dealParamClass(Class clazz) {
+        return MyBatisCacheConfig.CLASS_TYPE.get(clazz.getName()) == null ? clazz : MyBatisCacheConfig.CLASS_TYPE.get(clazz.getName());
+    }
+
+    /*private void getDisCacheMethod(Set<String> allClassName) throws Exception {
         for (String className : allClassName) {
             Method[] methods = Class.forName(className).getDeclaredMethods();
             for (Method method : methods) {
-                if (method.isAnnotationPresent(MyBatisCache.class)) {
-                    Annotation p = method.getAnnotation(MyBatisCache.class);
+                if (method.isAnnotationPresent(SelectCache.class)) {
+                    Annotation p = method.getAnnotation(SelectCache.class);
                     Method m = p.getClass().getDeclaredMethod("disCache", null);
                     boolean value = (boolean) m.invoke(p, null);
                     if (value) {
@@ -84,9 +144,35 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
                             MyBatisCacheConfig.DIS_CACHE_METHOD.add(mt);
                         }
                     }
+                    m = p.getClass().getDeclaredMethod("tables", null);
                 }
             }
         }
+    }*/
+
+    private Map<String, Object> getSelectCacheAnnoation(String mapperClassName, String methodName) throws Exception {
+
+        Method[] methods = Class.forName(mapperClassName).getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.getName().equals(methodName) && method.isAnnotationPresent(SelectCache.class)) {
+                Map<String, Object> map = new HashMap<>();
+                Annotation p = method.getAnnotation(SelectCache.class);
+                Method m = p.getClass().getDeclaredMethod("disCache", null);
+                boolean value = (boolean) m.invoke(p, null);
+                if (value) {
+                    String mt = mapperClassName + "." + method.getName();
+                    if (!MyBatisCacheConfig.DIS_CACHE_METHOD.contains(mt)) {
+                        MyBatisCacheConfig.DIS_CACHE_METHOD.add(mt);
+                    }
+                }
+                map.put("disCache", value);
+                m = p.getClass().getDeclaredMethod("tables", null);
+                Object tables = m.invoke(p, null);
+                map.put("tables", tables);
+                return map;
+            }
+        }
+        return null;
     }
 
 

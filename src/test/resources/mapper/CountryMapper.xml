@@ -41,6 +41,10 @@
         </where>
     </select>
 
+    <select id="selectByName" parameterType="java.lang.String" resultType="Country">
+        select * from country where name like CONCAT('%',#{cityName,jdbcType=VARCHAR},'%' )
+    </select>
+
     <insert id="insertSelective" parameterType="Country">
         insert into country
         <trim prefix="(" suffix=")" suffixOverrides=",">
