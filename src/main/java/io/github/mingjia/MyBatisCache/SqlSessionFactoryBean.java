@@ -56,12 +56,14 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
 
                     Map<String, Object> selectAnnoation = getSelectCacheAnnoation(mapperClassName, methodName);
                     String[] tableNames = null;
+                    String primaries = null;
                     if (selectAnnoation != null) {
                         if ((Boolean) selectAnnoation.get("disCache")) {
                             logger.debug("[disCache!]");
                             continue;
                         }
                         tableNames = (String[]) selectAnnoation.get("tables");
+                        primaries = (String) selectAnnoation.get("primaries");
                     }
 
                     if (tableNames != null && tableNames.length > 0) {
@@ -78,8 +80,15 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
                     }
                     logger.debug("tables:" + tables);
 
-                    //存储数据库表和mapper中的方法对应关系,数据库表中的数据发生过更改,可以知道要清除哪个方法产生的缓存
-                    methods(tables, ms.getId());
+                    if (tables.size() == 1 && primaries!=null) {
+                        //存储数据库表和mapper中的方法对应关系,数据库表中的数据发生过更改,可以知道要清除哪个方法产生的缓存
+                        methods(tables, ms.getId(), primaries);
+                    } else {
+                        //存储数据库表和mapper中的方法对应关系,数据库表中的数据发生过更改,可以知道要清除哪个方法产生的缓存
+                        methods(tables, ms.getId());
+                    }
+
+
                 }
 
             }
@@ -134,8 +143,8 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
         for (String className : allClassName) {
             Method[] methods = Class.forName(className).getDeclaredMethods();
             for (Method method : methods) {
-                if (method.isAnnotationPresent(SelectCache.class)) {
-                    Annotation p = method.getAnnotation(SelectCache.class);
+                if (method.isAnnotationPresent(CacheQuery.class)) {
+                    Annotation p = method.getAnnotation(CacheQuery.class);
                     Method m = p.getClass().getDeclaredMethod("disCache", null);
                     boolean value = (boolean) m.invoke(p, null);
                     if (value) {
@@ -154,9 +163,9 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
 
         Method[] methods = Class.forName(mapperClassName).getDeclaredMethods();
         for (Method method : methods) {
-            if (method.getName().equals(methodName) && method.isAnnotationPresent(SelectCache.class)) {
+            if (method.getName().equals(methodName) && method.isAnnotationPresent(CacheQuery.class)) {
                 Map<String, Object> map = new HashMap<>();
-                Annotation p = method.getAnnotation(SelectCache.class);
+                Annotation p = method.getAnnotation(CacheQuery.class);
                 Method m = p.getClass().getDeclaredMethod("disCache", null);
                 boolean value = (boolean) m.invoke(p, null);
                 if (value) {
@@ -169,6 +178,10 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
                 m = p.getClass().getDeclaredMethod("tables", null);
                 Object tables = m.invoke(p, null);
                 map.put("tables", tables);
+
+                m = p.getClass().getDeclaredMethod("primaries", null);
+                Object primaries = m.invoke(p, null);
+                map.put("primaries", primaries);
                 return map;
             }
         }
@@ -185,21 +198,32 @@ public class SqlSessionFactoryBean extends org.mybatis.spring.SqlSessionFactoryB
     }
 
     private void methods(Set<String> tables, String method) {
+        methods(tables, method, null);
+    }
+
+    private void methods(Set<String> tables, String method, String primaries) {
+
+        String methodCode = DigestUtils.md5Hex(method);
+        MyBatisCacheConfig.METHOD_TABLES.put(methodCode,tables);
         for (String table : tables) {
-            String methodCode = DigestUtils.md5Hex(method);
             String methodCountCode = DigestUtils.md5Hex(method + pageHelperCountSuffix);
-            if (MyBatisCacheConfig.TABLE_METHOD.get(table) == null) {
+            if (MyBatisCacheConfig.TABLE_METHODS.get(table) == null) {
                 Set<String> s = new HashSet<String>(2);
-                MyBatisCacheConfig.TABLE_METHOD.put(table, s);
+                MyBatisCacheConfig.TABLE_METHODS.put(table, s);
             }
-            Set<String> s = MyBatisCacheConfig.TABLE_METHOD.get(table);
+            Set<String> s = MyBatisCacheConfig.TABLE_METHODS.get(table);
             s.add(methodCode);
             s.add(methodCountCode);
+
+            MyBatisCacheConfig.METHOD_PRIMARYS.put(methodCode, primaries);
+            MyBatisCacheConfig.METHOD_PRIMARYS.put(methodCountCode, primaries);
 
             if (MyBatisCacheConfig.METHOD_DESC.get(methodCode) == null)
                 MyBatisCacheConfig.METHOD_DESC.put(methodCode, method);
             if (MyBatisCacheConfig.METHOD_DESC.get(methodCountCode) == null)
                 MyBatisCacheConfig.METHOD_DESC.put(methodCountCode, method + pageHelperCountSuffix);
+
+
         }
     }
 }

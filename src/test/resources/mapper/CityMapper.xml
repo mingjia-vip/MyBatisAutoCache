@@ -28,24 +28,19 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="io.github.mingjia.MyBatisCache.test.dao.CityMapper">
-    <select id="selectSelective" parameterType="City" resultType="City">
+    <select id="selectSelective" parameterType="io.github.mingjia.MyBatisCache.test.dao.po.City" resultType="City">
         select * from city
-        <if test="city != null">
-            <where>
-                <if test="id != null">
-                    AND id=#{id,jdbcType=INTEGER}
-                </if>
-                <if test="countryid != null">
-                    AND countryid=#{countryid,jdbcType=INTEGER}
-                </if>
-                <if test="name != null">
-                    AND name = #{name,jdbcType=VARCHAR}
-                </if>
-            </where>
-        </if>
-        <if test="city == null">
-            where 1!=1
-        </if>
+        <where>
+            <if test="id != null">
+                AND id=#{id,jdbcType=INTEGER}
+            </if>
+            <if test="countryid != null">
+                AND countryid=#{countryid,jdbcType=INTEGER}
+            </if>
+            <if test="name != null">
+                AND name = #{name,jdbcType=VARCHAR}
+            </if>
+        </where>
     </select>
 
 
@@ -98,6 +93,10 @@
                 where 1=2
             </otherwise>
         </choose>
+    </select>
+
+    <select id="selectById" parameterType="java.lang.Integer" resultType="City">
+        select * from city where id=#{id,jdbcType=INTEGER}
     </select>
 
     <insert id="insertSelective" parameterType="City">

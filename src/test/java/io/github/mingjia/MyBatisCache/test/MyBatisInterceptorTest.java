@@ -22,7 +22,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * SelectCache test
+ * CacheQuery test
  *
  * @auther GuiBin
  * @create 18/3/13

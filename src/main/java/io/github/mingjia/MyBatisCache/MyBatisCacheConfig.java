@@ -18,11 +18,20 @@ public class MyBatisCacheConfig {
     /**
      * 表和方法映射关系
      */
-    public static Map<String, Set<String>> TABLE_METHOD = new HashMap<>();
+    public static Map<String, Set<String>> TABLE_METHODS = new HashMap<>();
     /**
-     * 方法key与方法名的对一个关系
+     * 表和方法映射关系
+     */
+    public static Map<String, Set<String>> METHOD_TABLES = new HashMap<>();
+    /**
+     * 方法key与方法名的对应关系
      */
     public static Map<String, String> METHOD_DESC = new HashMap<>();
+
+    /**
+     * 方法与主键对应关系
+     */
+    public static Map<String, String> METHOD_PRIMARYS = new HashMap<>();
     
     public static Map<String,Class> CLASS_TYPE = new HashMap<>();
     static{

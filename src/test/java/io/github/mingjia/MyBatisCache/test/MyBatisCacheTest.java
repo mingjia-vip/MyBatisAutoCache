@@ -22,7 +22,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * SelectCache test
+ * CacheQuery test
  *
  * @auther GuiBin
  * @create 18/3/13
@@ -43,10 +43,10 @@ public class MyBatisCacheTest {
         for(String table:MyBatisCacheConfig.DIS_CACHE_METHOD){
             System.err.println(table);
         }
-        Iterator<String> it = MyBatisCacheConfig.TABLE_METHOD.keySet().iterator();
+        Iterator<String> it = MyBatisCacheConfig.TABLE_METHODS.keySet().iterator();
         while(it.hasNext()){
             String table = it.next();
-            Set<String> methodCodes = MyBatisCacheConfig.TABLE_METHOD.get(table);
+            Set<String> methodCodes = MyBatisCacheConfig.TABLE_METHODS.get(table);
             for(String methodCode:methodCodes){
                 System.err.println(table+":"+methodCode+":"+MyBatisCacheConfig.METHOD_DESC.get(methodCode));
             }
