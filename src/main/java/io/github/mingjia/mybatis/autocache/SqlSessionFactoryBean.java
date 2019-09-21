@@ -27,7 +27,7 @@ import java.util.*;
 
 /**
  * extends from {@link org.mybatis.spring.SqlSessionFactoryBean}
- * 增加了MyBatisCacheCongfig设置
+ * 增加了自动缓存加载及拦截器
  *
  * @auther GuiBin
  * @create 18/2/27
