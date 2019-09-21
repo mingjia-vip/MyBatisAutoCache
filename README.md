@@ -63,6 +63,8 @@ MybatisAutoCache主要意在降低缓存使用的复杂度，通过继承mybatis
 ```
 
 通过以上配置就开启了自动缓存功能，不用退代码进行修改，默认使用redis作为缓存数据库，支持分布式缓存，也可自定义CacheService实现（实现MybatisCacheServiceI即可）;
+
+
 MyBatisAutoCache比较适合简单场景，针对多租户场景，提供简单的分区支持，需要使用注解增加到Mapper接口方法中，如下所示：
 ```
 public interface CityMapper {
