@@ -14,10 +14,10 @@ MybatisAutoCache主要意在降低缓存使用的复杂度，通过继承mybatis
 
 
 
-#### 配置
-基于Spring＋MyBatis的配置，更换SqlSessionFactoryBean，并引入spring事务拦截处理，如下：
+#### 使用
+基于Spring＋MyBatis的配置，只需指定自动缓存的SqlSessionFactoryBean，并引入spring事务拦截处理即可，如下：
 ```
-    <!-- 继承mybatis的SqlSessionFactoryBean -->
+    <!-- 1，指定自动缓存SqlSessionFactoryBean（继承mybatis的SqlSessionFactoryBean） -->
     <bean id="sqlSessionFactory" class="io.github.mingjia.mybatis.autocache.SqlSessionFactoryBean">
         
         <!-- mybatis SqlSessionFactoryBean 配置开始（与使用mybatis一致） -->
@@ -49,7 +49,7 @@ MybatisAutoCache主要意在降低缓存使用的复杂度，通过继承mybatis
         <!--<property name="pageHelperCountSuffix" value="_COUNT"/> --><!-- 默认_COUNT -->
     </bean>
     
-    <!-- 自动缓存需要针对 spring-tx拦截处理，保证缓存数据一致性 -->
+    <!-- 2，引入针对spring-tx的拦截处理，保证缓存数据一致性 -->
     <bean id="springTransactionInterceptor" class="io.github.mingjia.mybatis.autocache.transaction.aop.SpringTransactionInterceptor" >
     </bean>
     <aop:config>
@@ -60,7 +60,32 @@ MybatisAutoCache主要意在降低缓存使用的复杂度，通过继承mybatis
     
     
 ```
-提供了默认使用redis作为缓存数据库，支持分布式缓存，也可自定义CacheService实现（实现MybatisCacheServiceI即可）。
+
+通过以上配置就开启了自动缓存功能，不用退代码进行修改，默认使用redis作为缓存数据库，支持分布式缓存，也可自定义CacheService实现（实现MybatisCacheServiceI即可）;
+MyBatisAutoCache比较适合简单场景，针对多租户场景，提供简单的分区支持，需要使用注解增加到Mapper接口方法中，如下所示：
+```
+    public interface CityMapper {
+    
+        @AutoCacheQuery(shard = "#param1") // 指定分区为param1，即参数countryId
+        City selectById(@Param("countryid") Integer countryid, @Param("id") Integer id);
+    
+        @AutoCacheQuery(shard = "#param1.countryid")// 指定分区为param1.countryid，即参数city.countryId
+        List<City> selectSelective(City city);
+    
+        // 未分区
+        List<City> selectCitysByCountryId(@Param("countryid") int countryid);
+    
+    
+    
+        @AutoCacheEvict(evictShards = {"#param1.countryid"})// 指定清除分区为param1.countryid，即参数city.countryId
+        int insertSelective(City city);
+    
+        @AutoCacheEvict(evictShards = {"#param1.countryid"})
+        int updateSelective(City city);
+    }
+
+```
+如上所示，再查询和修改City数据的时候，可以指定城市id做为分区依据，这样清除缓存的时候后就不会清除其他城市id的缓存数据（但是会清除没有指定分区的缓存，保证不会有脏数据）。
 
 
 #### 注意问题
@@ -81,6 +106,7 @@ MybatisAutoCache主要意在降低缓存使用的复杂度，通过继承mybatis
     2，集成方式：不够灵活，未实现注解方式配置，为了保住数据一致性引入了拦截器，对spirng的@Transactional进行拦截，并且需要在springTx拦截之前，xml配置方式可以简单指定拦截顺序，但注解方式...
     3，缓存方式：目前依赖于redis，太重了，应可选择多种场景模式，如：单jvm内，分布式等...
     4，使用场景：不适合中大应用使用，不能满足有针对性的缓存功能要求，比如...
+    ...
 
 ```
 
