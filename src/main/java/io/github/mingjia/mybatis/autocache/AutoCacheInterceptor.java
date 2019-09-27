@@ -38,6 +38,7 @@ import java.util.concurrent.locks.Lock;
         ,@Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class})
         ,@Signature(type = Executor.class, method = "query", args = {MappedStatement.class, Object.class, RowBounds.class, ResultHandler.class, CacheKey.class, BoundSql.class})
         ,@Signature(type = Executor.class, method = "commit", args = {boolean.class})
+        ,@Signature(type = Executor.class, method = "rollback", args = {boolean.class})
         ,@Signature(type = Executor.class, method = "close", args = {boolean.class})
 })
 public class AutoCacheInterceptor implements Interceptor {
@@ -250,6 +251,7 @@ public class AutoCacheInterceptor implements Interceptor {
 
         } else if (StringUtils.equals("commit", invocation.getMethod().getName())) {
 
+            //当事务有spring管理时，commit执行但不起作用，使用mybatis管理事务时才有效
             Object[] args = invocation.getArgs();
             if(AutoCacheCleanHolder.get(1)==null){
                 logger.debug("commit({}) AutoCacheCleanHolder.cleanCache(0)",args[0]);
@@ -258,6 +260,17 @@ public class AutoCacheInterceptor implements Interceptor {
                     AutoCacheCleanHolder.mulityThreadCleanCache(0);
                 else
                     AutoCacheCleanHolder.cleanCache(0);
+            }
+            return invocation.proceed();
+
+        } else if (StringUtils.equals("rollback", invocation.getMethod().getName())) {
+
+            //当事务有spring管理时，rollback不会执行，使用mybatis管理事务时才执行并有效
+            Object[] args = invocation.getArgs();
+            if(AutoCacheCleanHolder.get(1)==null){
+                logger.debug("rollback({}) AutoCacheCleanHolder.remove()",args[0]);
+                //移除
+                AutoCacheCleanHolder.remove();
             }
             return invocation.proceed();
 
